@@ -1,8 +1,9 @@
-import os
+import os, re
 import subprocess
+from typing import Optional
 
 from . import log
-
+from . import struct as st
 
 def create_file_if_not_exists(path_to_file: str) -> None:
     """
@@ -73,7 +74,8 @@ def load_config_from_py(config_path: str) -> dict:
         return {}
 
 
-def are_params_to_opt(primary_path: str, secondary_path: str, optim_param_name: str, log_tags_name: str) -> None:
+def are_params_to_opt(primary_path: str, secondary_path: str,
+                      optim_param_name: str, log_tags_name: str) -> tuple[st.OptimizeParams, st.LogTags]:
     # check in both configs if exists param PARAMS_TO_OPT
     nn_config: dict = load_config_from_py(primary_path)
     nn_config.update(load_config_from_py(secondary_path))
@@ -84,14 +86,55 @@ def are_params_to_opt(primary_path: str, secondary_path: str, optim_param_name: 
     # find LOG_TAGS
     if not nn_config.get(log_tags_name):
         raise f"No {log_tags_name} found"
+    return st.OptimizeParams(**nn_config.get(optim_param_name)), st.LogTags(**nn_config.get(log_tags_name))
 
 
-def optimize_config(primary_path: str, secondary_path: str):
-    # check in both configs if exists param PARAMS_TO_OPT
-    PARAMS_TO_OPT = "PARAMS_TO_OPT"
-    nn_config: dict = load_config_from_py(primary_path)
-    nn_config.update(load_config_from_py(secondary_path))
+def find_value_in_log(nn_log_path: str, average_loss_tag: str, difference_tag: str) -> tuple[float, float]:
+    """
+    Searches for float or int values in a log file immediately following specified tags.
+    """
+    average_loss_value: Optional[float] = None
+    accuracy_value: Optional[float] = None
 
-    # find PARAM_TO_OPT
-    if not nn_config.get(PARAMS_TO_OPT):
-        raise f"No {PARAMS_TO_OPT} found"
+    # Compile regex patterns to find float or int values after the specified tags
+    average_loss_pattern = re.compile(rf"{re.escape(average_loss_tag)}\s*:\s*([+-]?\d*\.?\d+)")
+    accuracy_pattern = re.compile(rf"{re.escape(difference_tag)}\s*:\s*([+-]?\d*\.?\d+)")
+
+    try:
+        with open(nn_log_path, 'r') as file:
+            for line in file:
+                # Search for average loss
+                if average_loss_value is None:  # Continue searching until found
+                    match = average_loss_pattern.search(line)
+                    if match:
+                        average_loss_value = float(match.group(1))
+
+                # Search for accuracy
+                if accuracy_value is None:  # Continue searching until found
+                    match = accuracy_pattern.search(line)
+                    if match:
+                        accuracy_value = float(match.group(1))
+
+                # Break the loop if both values are found
+                if average_loss_value is not None and accuracy_value is not None:
+                    break
+
+    except FileNotFoundError:
+        log.error(f"Error: The file at '{nn_log_path}' does not exist.")
+    except Exception as e:
+        log.error(f"An error occurred while reading the file: {str(e)}")
+
+    if not average_loss_value:
+        raise f"not found average_loss_value: {average_loss_value}"
+    if not accuracy_value:
+        raise f"not found accuracy_value: {accuracy_value}"
+    return average_loss_value, accuracy_value
+
+
+def get_log_values(script_path: str, nn_log_path: str, log_tags: st.LogTags) -> tuple[float, float]:
+    run_script(script_path)
+    average_loss_value, difference = find_value_in_log(nn_log_path, log_tags.average_loss, log_tags.difference)
+
+    return average_loss_value, difference
+
+

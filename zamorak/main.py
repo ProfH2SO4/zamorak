@@ -55,12 +55,30 @@ def main() -> None:
     PARAMS_TO_OPT = "PARAMS_TO_OPT"
     LOG_TAGS_NAME = "LOG_TAGS"
     # check if NN config has PARAMS_TO_OPT
-    common.are_params_to_opt(parsed_config.NN_PROJECT_CONFIG_PRIMARY_PATH,
+    optimize_param: st.OptimizeParams
+    log_tag: st.LogTags
+    optimize_param, log_tag = common.are_params_to_opt(parsed_config.NN_PROJECT_CONFIG_PRIMARY_PATH,
                              parsed_config.NN_PROJECT_CONFIG_SECONDARY_PATH,
                              PARAMS_TO_OPT,
                              LOG_TAGS_NAME
                              )
-    # run script
-    common.run_script(parsed_config.NN_PROJECT_PATH)
+    from skopt import Optimizer
+    from skopt.space import Real,
+    from skopt.utils import create_result
+    from skopt.plots import plot_convergence
+    space = [Real(-4, 4, name="MARGIN"), Real(-4, 4, name="LEARNING_RATE"),]
+    opt = Optimizer(dimensions=space, random_state=0)
+
+    for i in range(20):
+        suggested_point = opt.ask()
+        # run script
+        average_loss_value: float
+        accuracy_value: float
+        accuracy_value, difference = common.get_log_values(parsed_config.NN_PROJECT_PATH,
+                                                                   parsed_config.NN_LOG_FILE,
+                                                                log_tag)
+        opt.tell(suggested_point, objective_value)
+        print(f"Iteration {i + 1}, x: {suggested_point}, Objective: {objective_value}")
+
     # change NN config
 
