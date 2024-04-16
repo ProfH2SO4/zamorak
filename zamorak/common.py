@@ -1,9 +1,11 @@
 import os, re
 import subprocess
 from typing import Optional
+from optuna.trial._trial import Trial
 
 from . import log
 from . import struct as st
+
 
 def create_file_if_not_exists(path_to_file: str) -> None:
     """
@@ -89,34 +91,34 @@ def are_params_to_opt(primary_path: str, secondary_path: str,
     return st.OptimizeParams(**nn_config.get(optim_param_name)), st.LogTags(**nn_config.get(log_tags_name))
 
 
-def find_value_in_log(nn_log_path: str, average_loss_tag: str, difference_tag: str) -> tuple[float, float]:
+def find_value_in_log(nn_log_path: str, accuracy_tag: str, difference_tag: str) -> tuple[float, float]:
     """
     Searches for float or int values in a log file immediately following specified tags.
     """
-    average_loss_value: Optional[float] = None
+    difference_value: Optional[float] = None
     accuracy_value: Optional[float] = None
 
     # Compile regex patterns to find float or int values after the specified tags
-    average_loss_pattern = re.compile(rf"{re.escape(average_loss_tag)}\s*:\s*([+-]?\d*\.?\d+)")
-    accuracy_pattern = re.compile(rf"{re.escape(difference_tag)}\s*:\s*([+-]?\d*\.?\d+)")
+    difference_pattern = re.compile(rf"{re.escape(difference_tag)}\s*([+-]?\d+\.?\d*)")
+    accuracy_pattern = re.compile(rf"{re.escape(accuracy_tag)}\s*([+-]?\d+\.?\d*)")
 
     try:
         with open(nn_log_path, 'r') as file:
             for line in file:
-                # Search for average loss
-                if average_loss_value is None:  # Continue searching until found
-                    match = average_loss_pattern.search(line)
+                # Search for difference value
+                if difference_value is None:
+                    match = difference_pattern.search(line)
                     if match:
-                        average_loss_value = float(match.group(1))
+                        difference_value = float(match.group(1))
 
-                # Search for accuracy
-                if accuracy_value is None:  # Continue searching until found
+                # Search for accuracy value
+                if accuracy_value is None:
                     match = accuracy_pattern.search(line)
                     if match:
                         accuracy_value = float(match.group(1))
 
                 # Break the loop if both values are found
-                if average_loss_value is not None and accuracy_value is not None:
+                if difference_value is not None and accuracy_value is not None:
                     break
 
     except FileNotFoundError:
@@ -124,17 +126,76 @@ def find_value_in_log(nn_log_path: str, average_loss_tag: str, difference_tag: s
     except Exception as e:
         log.error(f"An error occurred while reading the file: {str(e)}")
 
-    if not average_loss_value:
-        raise f"not found average_loss_value: {average_loss_value}"
+    if not difference_value:
+        log.error(f"not found average_loss_tag {accuracy_tag}")
+        raise ValueError("not found difference_value: ")
     if not accuracy_value:
-        raise f"not found accuracy_value: {accuracy_value}"
-    return average_loss_value, accuracy_value
+        log.error(f"not found accuracy_value {accuracy_value}")
+        raise ValueError("not found accuracy_value: ")
+    return difference_value, accuracy_value
 
 
 def get_log_values(script_path: str, nn_log_path: str, log_tags: st.LogTags) -> tuple[float, float]:
     run_script(script_path)
-    average_loss_value, difference = find_value_in_log(nn_log_path, log_tags.average_loss, log_tags.difference)
+    average_loss_value, difference = find_value_in_log(nn_log_path, log_tags.accuracy, log_tags.difference)
 
     return average_loss_value, difference
+
+
+def change_config_file(config_path: str, values_to_change: dict[str, any]) -> None:
+    """
+    Modifies a configuration file at the specified path. Parameters found in the file are updated,
+    and those not found are added to the end of the file.
+
+    :param: config_path (str): The file path to the configuration file.
+    :param: values_to_change (dict[str, any]): A dictionary of parameter names and their new values.
+    """
+    create_file_if_not_exists(config_path)
+
+    with open(config_path, 'r') as file:
+        lines = file.readlines()
+
+
+    # Create a map from existing lines to easily update/add new values
+    config_dict = {}
+    for line in lines:
+        if '=' in line:
+            key, value = line.strip().split('=', 1)
+            config_dict[key.strip()] = value.strip()
+
+    # Update the dictionary with new values
+    config_dict.update(values_to_change)
+    with open(config_path, 'w') as file:
+        for key, value in config_dict.items():
+            file.write(f"{key}={value}\n")
+
+
+def objective(trial: Trial,
+              nn_project_path: str,
+              nn_log_file_path: str,
+              nn_secondary_config_path: str,
+              optimize_params: st.OptimizeParams,
+              log_tags: st.LogTags):
+    # Suggest values for the hyperparameters
+    margin: float = trial.suggest_float(optimize_params.margin.name,
+                                 optimize_params.margin.boundary.min_value,
+                                 optimize_params.margin.boundary.max_value)
+    learning_rate: float = trial.suggest_float(optimize_params.learning_rate.name,
+                                        optimize_params.learning_rate.boundary.min_value,
+                                        optimize_params.learning_rate.boundary.max_value)
+    # change config
+    change_config_file(nn_secondary_config_path, {
+                                                    optimize_params.margin.name: margin,
+                                                    optimize_params.learning_rate.name: learning_rate,
+                                                  })
+    # Simulate running a script that uses these parameters and returns metrics
+    # Replace `get_log_values` with your actual function to retrieve metrics
+    # For the purpose of this example, let's assume it returns a tuple (accuracy, difference)
+    accuracy, difference = get_log_values(nn_project_path,
+                                          nn_log_file_path,
+                                          log_tags)
+
+    # Optuna minimizes by default, so we return -accuracy to maximize it
+    return difference, -accuracy
 
 

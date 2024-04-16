@@ -1,2 +1,2 @@
 pre-commit
-scikit-optimize==0.*
+optuna==3.6.*

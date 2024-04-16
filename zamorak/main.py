@@ -1,6 +1,7 @@
 from types import ModuleType
 import os
-
+import optuna
+from functools import partial
 
 import config
 
@@ -57,28 +58,29 @@ def main() -> None:
     # check if NN config has PARAMS_TO_OPT
     optimize_param: st.OptimizeParams
     log_tag: st.LogTags
-    optimize_param, log_tag = common.are_params_to_opt(parsed_config.NN_PROJECT_CONFIG_PRIMARY_PATH,
+    optimize_param, log_tag = common.are_params_to_opt(
+                             parsed_config.NN_PROJECT_CONFIG_PRIMARY_PATH,
                              parsed_config.NN_PROJECT_CONFIG_SECONDARY_PATH,
                              PARAMS_TO_OPT,
                              LOG_TAGS_NAME
                              )
-    from skopt import Optimizer
-    from skopt.space import Real,
-    from skopt.utils import create_result
-    from skopt.plots import plot_convergence
-    space = [Real(-4, 4, name="MARGIN"), Real(-4, 4, name="LEARNING_RATE"),]
-    opt = Optimizer(dimensions=space, random_state=0)
 
-    for i in range(20):
-        suggested_point = opt.ask()
-        # run script
-        average_loss_value: float
-        accuracy_value: float
-        accuracy_value, difference = common.get_log_values(parsed_config.NN_PROJECT_PATH,
-                                                                   parsed_config.NN_LOG_FILE,
-                                                                log_tag)
-        opt.tell(suggested_point, objective_value)
-        print(f"Iteration {i + 1}, x: {suggested_point}, Objective: {objective_value}")
 
-    # change NN config
+    # Create a multi-objective study
+    study = optuna.create_study(directions=["minimize", "maximize"])
+    # nn_project_path: str, nn_log_file_path: str, log_tag
+    wrapped_objective = partial(common.objective,
+                                nn_project_path=parsed_config.NN_PROJECT_PATH,
+                                nn_log_file_path=parsed_config.NN_LOG_FILE,
+                                nn_secondary_config_path=parsed_config.NN_PROJECT_CONFIG_SECONDARY_PATH,
+                                optimize_params=optimize_param,
+                                log_tags=log_tag)
+
+    # Optimize the study, using the objective function and a callback for logging
+    study.optimize(wrapped_objective, n_trials=10)
+
+    print("Best trials:")
+    for trial in study.best_trials:
+        print(f"  Values: {trial.values}")
+        print(f"  Params: {trial.params}")
 

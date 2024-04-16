@@ -23,13 +23,19 @@ class Boundary:
 
 
 @dataclass(slots=True)
+class Param:
+    name: str
+    boundary: Boundary
+
+
+@dataclass(slots=True)
 class OptimizeParams:
-    LEARNING_RATE: Boundary
-    MARGIN: Boundary
+    learning_rate: Param
+    margin: Param
 
     def __init__(self, **kwargs):
-        self.LEARNING_RATE = Boundary(**kwargs["LEARNING_RATE"])
-        self.MARGIN = Boundary(**kwargs["MARGIN"])
+        self.learning_rate = Param(name="LEARNING_RATE", boundary=Boundary(**kwargs["LEARNING_RATE"]))
+        self.margin = Param(name="MARGIN", boundary=Boundary(**kwargs["MARGIN"]))
 
 
 @dataclass(slots=True)
