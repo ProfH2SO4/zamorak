@@ -54,7 +54,7 @@ def run_script(script_path: str) -> int:
         os.chdir(original_dir)  # Restore the original directory
 
 
-def load_config_from_py(config_path: str) -> dict:
+def load_config_as_dict(config_path: str) -> dict:
     # Initialize a dictionary to execute the file within a safe scope
     local_vars = {}
     try:
@@ -76,11 +76,13 @@ def load_config_from_py(config_path: str) -> dict:
         return {}
 
 
-def are_params_to_opt(primary_path: str, secondary_path: str,
-                      optim_param_name: str, log_tags_name: str) -> tuple[st.OptimizeParams, st.LogTags]:
+def are_params_to_opt(primary_path: str,
+                      secondary_path: str,
+                      optim_param_name: str,
+                      log_tags_name: str) -> tuple[st.OptimizeParams, st.LogTags]:
     # check in both configs if exists param PARAMS_TO_OPT
-    nn_config: dict = load_config_from_py(primary_path)
-    nn_config.update(load_config_from_py(secondary_path))
+    nn_config: dict = load_config_as_dict(primary_path)
+    nn_config.update(load_config_as_dict(secondary_path))  # load .env
 
     # find PARAM_TO_OPT
     if not nn_config.get(optim_param_name):
@@ -137,12 +139,12 @@ def find_value_in_log(nn_log_path: str, accuracy_tag: str, difference_tag: str) 
 
 def get_log_values(script_path: str, nn_log_path: str, log_tags: st.LogTags) -> tuple[float, float]:
     run_script(script_path)
-    average_loss_value, difference = find_value_in_log(nn_log_path, log_tags.accuracy, log_tags.difference)
+    average_loss_value, difference = find_value_in_log(nn_log_path, log_tags.accuracy.tag, log_tags.difference.tag)
 
     return average_loss_value, difference
 
 
-def change_config_file(config_path: str, values_to_change: dict[str, any]) -> None:
+def change_env_file(config_path: str, values_to_change: dict[str, any]) -> None:
     """
     Modifies a configuration file at the specified path. Parameters found in the file are updated,
     and those not found are added to the end of the file.
@@ -154,7 +156,6 @@ def change_config_file(config_path: str, values_to_change: dict[str, any]) -> No
 
     with open(config_path, 'r') as file:
         lines = file.readlines()
-
 
     # Create a map from existing lines to easily update/add new values
     config_dict = {}
@@ -184,7 +185,7 @@ def objective(trial: Trial,
                                         optimize_params.learning_rate.boundary.min_value,
                                         optimize_params.learning_rate.boundary.max_value)
     # change config
-    change_config_file(nn_secondary_config_path, {
+    change_env_file(nn_secondary_config_path, {
                                                     optimize_params.margin.name: margin,
                                                     optimize_params.learning_rate.name: learning_rate,
                                                   })
@@ -194,8 +195,6 @@ def objective(trial: Trial,
     accuracy, difference = get_log_values(nn_project_path,
                                           nn_log_file_path,
                                           log_tags)
-
-    # Optuna minimizes by default, so we return -accuracy to maximize it
-    return difference, -accuracy
+    return difference, accuracy
 
 

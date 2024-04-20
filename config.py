@@ -1,8 +1,16 @@
 
 NN_PROJECT_PATH = "/home/matej/git/bandos/run.py"
 NN_PROJECT_CONFIG_PRIMARY_PATH = "/home/matej/git/bandos/config.py"
-NN_PROJECT_CONFIG_SECONDARY_PATH = "/etc/bandos/config.py"  # Secondary overrides primary
+NN_PROJECT_ENV_FILE_PATH = "/home/matej/git/bandos/.env"  # Secondary overrides primary
 NN_LOG_FILE = "/home/matej/git/bandos/logs/default.txt"
+
+# param names in config to know what we are looking for
+NN_PARAMS_TO_OPT_NAME = "PARAMS_TO_OPT"
+NN_LOG_TAGS_NAME = "LOG_TAGS"
+
+# number of iteration to find optional params
+N_TRIALS = 10
+
 
 LOG_CONFIG = {
     "version": 1,

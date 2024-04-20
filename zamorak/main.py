@@ -53,34 +53,34 @@ def main() -> None:
     if parsed_config.LOG_CONFIG["handlers"].get("file", None):
         file_path: str = parsed_config.LOG_CONFIG["handlers"]["file"].get("filename")
         common.create_file_if_not_exists(file_path)
-    PARAMS_TO_OPT = "PARAMS_TO_OPT"
-    LOG_TAGS_NAME = "LOG_TAGS"
+    log.set_up_logger(parsed_config.LOG_CONFIG)
+    log.info("START")
+    log.info(f"Config Values: {parsed_config}")
     # check if NN config has PARAMS_TO_OPT
     optimize_param: st.OptimizeParams
     log_tag: st.LogTags
     optimize_param, log_tag = common.are_params_to_opt(
                              parsed_config.NN_PROJECT_CONFIG_PRIMARY_PATH,
-                             parsed_config.NN_PROJECT_CONFIG_SECONDARY_PATH,
-                             PARAMS_TO_OPT,
-                             LOG_TAGS_NAME
+                             parsed_config.NN_PROJECT_ENV_FILE_PATH,
+                             parsed_config.NN_PARAMS_TO_OPT_NAME,
+                             parsed_config.NN_LOG_TAGS_NAME
                              )
 
-
-    # Create a multi-objective study
-    study = optuna.create_study(directions=["minimize", "maximize"])
+    # Create a multi-objective study #  common.objective => return difference, accuracy
+    study = optuna.create_study(directions=[log_tag.difference.goal, log_tag.accuracy.goal])
     # nn_project_path: str, nn_log_file_path: str, log_tag
     wrapped_objective = partial(common.objective,
                                 nn_project_path=parsed_config.NN_PROJECT_PATH,
                                 nn_log_file_path=parsed_config.NN_LOG_FILE,
-                                nn_secondary_config_path=parsed_config.NN_PROJECT_CONFIG_SECONDARY_PATH,
+                                nn_secondary_config_path=parsed_config.NN_PROJECT_ENV_FILE_PATH,
                                 optimize_params=optimize_param,
                                 log_tags=log_tag)
 
     # Optimize the study, using the objective function and a callback for logging
-    study.optimize(wrapped_objective, n_trials=10)
+    study.optimize(wrapped_objective, n_trials=parsed_config.N_TRIALS)
 
-    print("Best trials:")
+    log.debug("Best trials:")
     for trial in study.best_trials:
-        print(f"  Values: {trial.values}")
-        print(f"  Params: {trial.params}")
-
+        log.debug(f"  Values: {trial.values}")
+        log.debug(f"  Params: {trial.params}")
+    log.info("END")
