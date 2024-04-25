@@ -70,6 +70,7 @@ def main() -> None:
     study = optuna.create_study(directions=[log_tag.difference.goal, log_tag.accuracy.goal])
     # nn_project_path: str, nn_log_file_path: str, log_tag
     wrapped_objective = partial(common.objective,
+                                python_path=parsed_config.PYTHON_PATH,
                                 nn_project_path=parsed_config.NN_PROJECT_PATH,
                                 nn_log_file_path=parsed_config.NN_LOG_FILE,
                                 nn_secondary_config_path=parsed_config.NN_PROJECT_ENV_FILE_PATH,

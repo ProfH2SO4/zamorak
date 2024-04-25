@@ -1,4 +1,7 @@
 
+#
+PYTHON_PATH = "/home/matej/git/bandos/venv/bin/python3.10"
+
 NN_PROJECT_PATH = "/home/matej/git/bandos/run.py"
 NN_PROJECT_CONFIG_PRIMARY_PATH = "/home/matej/git/bandos/config.py"
 NN_PROJECT_ENV_FILE_PATH = "/home/matej/git/bandos/.env"  # Secondary overrides primary

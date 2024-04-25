@@ -23,7 +23,7 @@ def create_file_if_not_exists(path_to_file: str) -> None:
             pass  # Create an empty file
 
 
-def run_script(script_path: str) -> int:
+def run_script(script_path: str, python_path: str) -> int:
     """
     Runs a Python script at the given path and waits until it has completed.
 
@@ -31,7 +31,6 @@ def run_script(script_path: str) -> int:
 
     :return: int The exit code of the process. Typically, an exit code of 0 indicates success.
     """
-    python_path: str = "/home/matej/git/zezima/venv/bin/python3.10"
     original_dir: str = os.getcwd()  # Save the current working directory
     script_dir: str = os.path.dirname(script_path)  # Get the directory of the script
 
@@ -137,8 +136,8 @@ def find_value_in_log(nn_log_path: str, accuracy_tag: str, difference_tag: str) 
     return difference_value, accuracy_value
 
 
-def get_log_values(script_path: str, nn_log_path: str, log_tags: st.LogTags) -> tuple[float, float]:
-    run_script(script_path)
+def get_log_values(script_path: str,  python_path: str, nn_log_path: str, log_tags: st.LogTags) -> tuple[float, float]:
+    run_script(script_path, python_path)
     average_loss_value, difference = find_value_in_log(nn_log_path, log_tags.accuracy.tag, log_tags.difference.tag)
 
     return average_loss_value, difference
@@ -172,6 +171,7 @@ def change_env_file(config_path: str, values_to_change: dict[str, any]) -> None:
 
 
 def objective(trial: Trial,
+              python_path: str,
               nn_project_path: str,
               nn_log_file_path: str,
               nn_secondary_config_path: str,
@@ -193,6 +193,7 @@ def objective(trial: Trial,
     # Replace `get_log_values` with your actual function to retrieve metrics
     # For the purpose of this example, let's assume it returns a tuple (accuracy, difference)
     accuracy, difference = get_log_values(nn_project_path,
+                                          python_path,
                                           nn_log_file_path,
                                           log_tags)
     return difference, accuracy
