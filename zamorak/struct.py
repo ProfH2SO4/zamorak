@@ -13,6 +13,7 @@ class Config:
     NN_LOG_TAGS_NAME: str
     N_TRIALS: int
     PYTHON_PATH: str
+    NN_PARAM_CONFIG_NAME: str
 
     def __init__(self, **kwargs):
         cls_fields = {f.name for f in fields(self)}

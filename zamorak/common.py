@@ -175,6 +175,7 @@ def objective(trial: Trial,
               nn_project_path: str,
               nn_log_file_path: str,
               nn_secondary_config_path: str,
+              nn_param_config_name: str,
               optimize_params: st.OptimizeParams,
               log_tags: st.LogTags):
     # Suggest values for the hyperparameters
@@ -188,6 +189,7 @@ def objective(trial: Trial,
     change_env_file(nn_secondary_config_path, {
                                                     optimize_params.margin.name: margin,
                                                     optimize_params.learning_rate.name: learning_rate,
+                                                    nn_param_config_name: f"{str(margin)}{str(learning_rate)}",
                                                   })
     # Simulate running a script that uses these parameters and returns metrics
     # Replace `get_log_values` with your actual function to retrieve metrics

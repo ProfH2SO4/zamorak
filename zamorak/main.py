@@ -1,4 +1,6 @@
 from types import ModuleType
+from dataclasses import fields
+from dotenv import load_dotenv
 import os
 import optuna
 from functools import partial
@@ -10,7 +12,7 @@ from . import log
 from . import struct as st
 
 
-def load_config(path_: str) -> ModuleType:
+def load_config() -> ModuleType:
     """
     Loads the configuration from a local `config.py` file.
      If a `config.py` file exists in `/etc/bandos/`, it overrides parameters in the local `config.py`.
@@ -19,14 +21,13 @@ def load_config(path_: str) -> ModuleType:
     """
     app_config: ModuleType = config
 
-    if not os.path.isfile(path_):
-        return app_config
-    try:
-        with open(path_, "rb") as rnf:
-            exec(compile(rnf.read(), path_, "exec"), app_config.__dict__)
-    except OSError as e:
-        print(f"File at {path_} could not be loaded because of error: {e}")
-        raise e from e
+    load_dotenv()
+    for field_info in fields(st.Config):
+        env_value = os.getenv(field_info.name)
+        if env_value is not None:
+            field_type = type(getattr(app_config, field_info.name, field_info.default))
+            setattr(app_config, field_info.name, field_type(env_value))
+
     return app_config
 
 
@@ -46,7 +47,7 @@ def parse_namespace(config_: ModuleType) -> st.Config:
 
 def main() -> None:
     # load config
-    config_: ModuleType = load_config("/etc/zamorak/config.py")
+    config_: ModuleType = load_config()
     parsed_config: st.Config = parse_namespace(config_)
 
     print("============ Setting Up Logger ============")
@@ -74,6 +75,7 @@ def main() -> None:
                                 nn_project_path=parsed_config.NN_PROJECT_PATH,
                                 nn_log_file_path=parsed_config.NN_LOG_FILE,
                                 nn_secondary_config_path=parsed_config.NN_PROJECT_ENV_FILE_PATH,
+                                nn_param_config_name=parsed_config.NN_PARAM_CONFIG_NAME,
                                 optimize_params=optimize_param,
                                 log_tags=log_tag)
 
@@ -82,6 +84,6 @@ def main() -> None:
 
     log.debug("Best trials:")
     for trial in study.best_trials:
-        log.debug(f"  Values: {trial.values}")
-        log.debug(f"  Params: {trial.params}")
+        log.info(f"  Values: {trial.values}")
+        log.info(f"  Params: {trial.params}")
     log.info("END")

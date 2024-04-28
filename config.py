@@ -5,7 +5,8 @@ PYTHON_PATH = "/home/matej/git/bandos/venv/bin/python3.10"
 NN_PROJECT_PATH = "/home/matej/git/bandos/run.py"
 NN_PROJECT_CONFIG_PRIMARY_PATH = "/home/matej/git/bandos/config.py"
 NN_PROJECT_ENV_FILE_PATH = "/home/matej/git/bandos/.env"  # Secondary overrides primary
-NN_LOG_FILE = "/home/matej/git/bandos/logs/default.txt"
+NN_LOG_FILE = "/home/matej/git/bandos/logs/1k_hg19.txt"
+NN_PARAM_CONFIG_NAME = "NAME"
 
 # param names in config to know what we are looking for
 NN_PARAMS_TO_OPT_NAME = "PARAMS_TO_OPT"
